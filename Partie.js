@@ -1,4 +1,6 @@
 // TODO : https://github.com/jmcker/Peer-to-Peer-Cue-System
+// TODO : supression de ligne
+// TODO : dropPièce -> pose la pièce le plus bas possible
 
 var KEY = { ESC: 27, SPACE: 32, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40 };
 var DIR = { LEFT: 1, RIGHT: 2, DOWN: 3 };
