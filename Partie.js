@@ -1,8 +1,4 @@
-// TODO : marquer début fin de la pièce dans le type ? debut de ligne /fin de colonne /debut colone
-// TODO : ne pas pouvoir superposer deux blocks
 // TODO : https://github.com/jmcker/Peer-to-Peer-Cue-System
-
-
 
 var KEY = { ESC: 27, SPACE: 32, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40 };
 var DIR = { LEFT: 1, RIGHT: 2, DOWN: 3 };
@@ -29,13 +25,13 @@ var nbMaxPieceY = 20;// nombre max de block tetris Y
 //
 //-------------------------------------------------------------------------
 
-var i = { size: 4, startPosY: 1, blocks: [0x0F00, 0x2222, 0x00F0, 0x4444], color: 'cyan' };
-var j = { size: 3, startPosY: 0, blocks: [0x44C0, 0x8E00, 0x6440, 0x0E20], color: 'blue' };
-var l = { size: 3, startPosY: 0, blocks: [0x4460, 0x0E80, 0xC440, 0x2E00], color: 'orange' };
-var o = { size: 2, startPosY: 0, blocks: [0xCC00, 0xCC00, 0xCC00, 0xCC00], color: 'yellow' };
-var s = { size: 3, startPosY: 0, blocks: [0x06C0, 0x8C40, 0x6C00, 0x4620], color: 'green' };
-var t = { size: 3, startPosY: 0, blocks: [0x0E40, 0x4C40, 0x4E00, 0x4640], color: 'purple' };
-var z = { size: 3, startPosY: 0, blocks: [0x0C60, 0x4C80, 0xC600, 0x2640], color: 'red' };
+var i = { size: 4, blocks: [0x0F00, 0x2222, 0x00F0, 0x4444], color: 'cyan' };
+var j = { size: 3, blocks: [0x44C0, 0x8E00, 0x6440, 0x0E20], color: 'blue' };
+var l = { size: 3, blocks: [0x4460, 0x0E80, 0xC440, 0x2E00], color: 'orange' };
+var o = { size: 2, blocks: [0xCC00, 0xCC00, 0xCC00, 0xCC00], color: 'yellow' };
+var s = { size: 3, blocks: [0x06C0, 0x8C40, 0x6C00, 0x4620], color: 'green' };
+var t = { size: 3, blocks: [0x0E40, 0x4C40, 0x4E00, 0x4640], color: 'purple' };
+var z = { size: 3, blocks: [0x0C60, 0x4C80, 0xC600, 0x2640], color: 'red' };
 
 var currentPiece = {};
 currentPiece.y = 0;
@@ -57,18 +53,15 @@ canvas.height = canvas.clientHeight; // idem
 tailleX = canvas.width / nbMaxPieceX; // taille en pixel d'une pièce tetris
 tailleY = canvas.height / nbMaxPieceY; // idem
 
-
-
-function morceauPiece(typePiece, x, y, rotation, drawFunction) {
+function chaqueMorceauPiece(typePiece, x, y, rotation, func) {
     var bit,                        // bit
-        result,                     // resultat
         row = 0,                    // ligne ou se place le bock
         col = 0,                    // colonne ou se place le block
         blocks = typePiece.blocks[rotation];  // blocks en fonction de sa rotation
 
     for (bit = 0x8000; bit > 0; bit = bit >> 1) {
         if (blocks & bit) {
-            drawFunction(ctx, x + col, y + row, typePiece.color);
+            func(x + col, y + row, typePiece.color);
         }
         if (++col === 4) {
             col = 0;
@@ -77,17 +70,31 @@ function morceauPiece(typePiece, x, y, rotation, drawFunction) {
     }
 }
 
+// permet de savoir si la palce est occupée
+function canDraw(typePiece, x, y, rotation) {
+    let canDrawResult = true;
+
+    chaqueMorceauPiece(typePiece, x, y, rotation, (x, y) => {
+        //on regarde tous les cas où on ne pourrais pas poser de block
+        if (x < 0 || y > nbMaxPieceY - 1 || x > nbMaxPieceX - 1 || y < 0 || (pieces && pieces[x] ? pieces[x][y] : null)) {
+            canDrawResult = false;
+        }
+    });
+    return canDrawResult;
+}
+
 // permet de dessiner une pièce
-function drawBlock(ctx, x, y, color) {
+function draw(typePiece, x, y, rotation) {
+    chaqueMorceauPiece(typePiece, x, y, rotation, (x, y, color) => {
+        drawMorceauPiece(x, y, color);
+    })
+}
+
+function drawMorceauPiece(x, y, color) {
     ctx.fillStyle = color;
     ctx.fillRect(x * tailleX, y * tailleY, tailleX, tailleY);
     ctx.strokeRect(x * tailleX, y * tailleY, tailleX, tailleY);
 }
-
-function draw(typePiece, x, y, rotation) {
-    morceauPiece(typePiece, x, y, rotation, drawBlock)
-}
-
 
 function addEvents() {
     document.addEventListener('keydown', keydown, false);
@@ -113,9 +120,21 @@ function keydown(e) {
 function move(direction) {
     switch (direction) {
         // à chaque fois on verifie que l'on peut déplacer la pièce
-        case DIR.LEFT: currentPiece.x - 1 >= 0 ? currentPiece.x -= 1 : null; break;
-        case DIR.RIGHT: currentPiece.x + currentPiece.type.size + 1 <= nbMaxPieceX ? currentPiece.x += 1 : null; break;
-        case DIR.DOWN: currentPiece.y + currentPiece.type.startPosY + 1 < nbMaxPieceY ? currentPiece.y += 1 : null; break;
+        case DIR.LEFT:
+            if (canDraw(currentPiece.type, currentPiece.x - 1, currentPiece.y, currentPiece.rotation)) {
+                currentPiece.x -= 1;
+            }
+            break;
+        case DIR.RIGHT:
+            if (canDraw(currentPiece.type, currentPiece.x + 1, currentPiece.y, currentPiece.rotation)) {
+                currentPiece.x += 1;
+            }
+            break;
+        case DIR.DOWN:
+            if (canDraw(currentPiece.type, currentPiece.x, currentPiece.y + 1, currentPiece.rotation)) {
+                currentPiece.y += 1;
+            }
+            break;
     }
 
     // on vide le canvas
@@ -128,23 +147,27 @@ function move(direction) {
 
 //permet de lacher une pièce
 function dropPiece() {
-    //on verifie l'endoit où on souhaite poser la pièce et on met un tableau vide si c'est null
-    if (pieces[currentPiece.x] == null) {
-        pieces[currentPiece.x] = [];
-    }
-    if (pieces[currentPiece.x][currentPiece.y] == null) {
-        pieces[currentPiece.x][currentPiece.y] = [];
-    }
     //on pose la pièce
-    pieces[currentPiece.x][currentPiece.y] = currentPiece; //todo changer et remplacer par la pièce i j ...s
+    chaqueMorceauPiece(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation, (x, y) => {
+        //on verifie l'endoit où on souhaite poser la pièce et on met un tableau vide si c'est null
+        if (pieces[x] == null) {
+            pieces[x] = [];
+        }
+        if (pieces[x][y] == null) {
+            pieces[x][y] = [];
+        }
+        pieces[x][y] = currentPiece;
+    });
+
 
     //on change l'objet par la nouvelle pièce
     currentPiece = {}
     currentPiece.type = j;
+    currentPiece.rotation = 0;
     currentPiece.x = 0;
     currentPiece.y = 0;
-    //on dessinne la nouvelle pièce
-    draw(currentPiece.type, currentPiece.x, currentPiece.y, 0)
+    //on dessine la nouvelle pièce
+    draw(currentPiece.type, currentPiece.x, currentPiece.y, 0);
 
 }
 
@@ -156,8 +179,8 @@ function drawPieces() {
             for (let cpt2 = 0; cpt2 < numMaxY; cpt2++) {
                 if (pieces[cpt1][cpt2] != null) {
                     let piece = pieces[cpt1][cpt2];
-
-                    draw(piece.type, piece.x, piece.y, piece.rotation);
+                    
+                    drawMorceauPiece(cpt1, cpt2, piece.type.color);
                 }
             }
         }
