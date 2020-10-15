@@ -1,9 +1,9 @@
 // TODO : https://github.com/jmcker/Peer-to-Peer-Cue-System
-// TODO : supression de ligne
-// TODO : dropPièce -> pose la pièce le plus bas possible
+// TODO : supression de ligne (on drop piece)
+// TODO : Perdre
 
 var KEY = { ESC: 27, SPACE: 32, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40 };
-var DIR = { LEFT: 1, RIGHT: 2, DOWN: 3 };
+var DIR = { UP: 0, LEFT: 1, RIGHT: 2, DOWN: 3 };
 var numMaxX = 10; // nombre de pièces tetris max en largeur
 var numMaxY = 20; // nombre de pièces tetris max en hauteur
 
@@ -56,7 +56,7 @@ tailleX = canvas.width / nbMaxPieceX; // taille en pixel d'une pièce tetris
 tailleY = canvas.height / nbMaxPieceY; // idem
 
 function chaqueMorceauPiece(typePiece, x, y, rotation, func) {
-    var bit,                        // bit
+    let bit,                        // bit
         row = 0,                    // ligne ou se place le bock
         col = 0,                    // colonne ou se place le block
         blocks = typePiece.blocks[rotation];  // blocks en fonction de sa rotation
@@ -111,6 +111,7 @@ function keydown(e) {
         case KEY.RIGHT: move(DIR.RIGHT); handled = true; break;
         case KEY.DOWN: move(DIR.DOWN); handled = true; break;
         case KEY.SPACE: dropPiece(); handled = true; break;
+        case KEY.UP: move(DIR.UP); handled = true; break;
     }
 
     if (handled) {
@@ -137,6 +138,12 @@ function move(direction) {
                 currentPiece.y += 1;
             }
             break;
+        case DIR.UP:
+            var newRotation = currentPiece.rotation+1 <=3 ? currentPiece.rotation +1 : 0;
+            if (canDraw(currentPiece.type, currentPiece.x, currentPiece.y + 1, newRotation)) {
+                currentPiece.rotation = newRotation;
+            }
+            break;
     }
 
     // on vide le canvas
@@ -144,13 +151,18 @@ function move(direction) {
     // on dessine les pièces déjà posées
     drawPieces();
     // on dessine la pièce que l'on viens de bouger
-    draw(currentPiece.type, currentPiece.x, currentPiece.y, 0)
+    draw(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation);
 }
 
 //permet de lacher une pièce
 function dropPiece() {
+    //on regarde le y le plus bas possible pour poser la pièce
+    let lowestY = GetLowestYPossible(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation);
+    // on vide le canvas
+    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+
     //on pose la pièce
-    chaqueMorceauPiece(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation, (x, y) => {
+    chaqueMorceauPiece(currentPiece.type, currentPiece.x, lowestY, currentPiece.rotation, (x, y) => {
         //on verifie l'endoit où on souhaite poser la pièce et on met un tableau vide si c'est null
         if (pieces[x] == null) {
             pieces[x] = [];
@@ -161,6 +173,8 @@ function dropPiece() {
         pieces[x][y] = currentPiece;
     });
 
+    // on dessine les pièces déjà posées, dont celle que l'on viens de poser
+    drawPieces();
 
     //on change l'objet par la nouvelle pièce
     currentPiece = {}
@@ -169,8 +183,20 @@ function dropPiece() {
     currentPiece.x = 0;
     currentPiece.y = 0;
     //on dessine la nouvelle pièce
-    draw(currentPiece.type, currentPiece.x, currentPiece.y, 0);
+    draw(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation);
 
+}
+
+function GetLowestYPossible(typePiece, x, y, rotation) {
+    let lowestY = y;
+    for (let cpt = y + 1; cpt < nbMaxPieceY; cpt++) {
+        let result = canDraw(typePiece, x, cpt, rotation);
+        if (!result) {
+            lowestY = cpt - 1;
+            break;
+        }
+    }
+    return lowestY;
 }
 
 // permet de dessiner toutes les pièces déjà posées
@@ -181,7 +207,7 @@ function drawPieces() {
             for (let cpt2 = 0; cpt2 < numMaxY; cpt2++) {
                 if (pieces[cpt1][cpt2] != null) {
                     let piece = pieces[cpt1][cpt2];
-                    
+
                     drawMorceauPiece(cpt1, cpt2, piece.type.color);
                 }
             }
