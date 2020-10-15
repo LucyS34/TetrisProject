@@ -1,4 +1,5 @@
 // TODO : https://github.com/jmcker/Peer-to-Peer-Cue-System
+// TODO : liste pièce aléatoire
 // TODO : supression de ligne (on drop piece)
 // TODO : Perdre
 
@@ -34,12 +35,13 @@ var o = { size: 2, blocks: [0xCC00, 0xCC00, 0xCC00, 0xCC00], color: 'yellow' };
 var s = { size: 3, blocks: [0x06C0, 0x8C40, 0x6C00, 0x4620], color: 'green' };
 var t = { size: 3, blocks: [0x0E40, 0x4C40, 0x4E00, 0x4640], color: 'purple' };
 var z = { size: 3, blocks: [0x0C60, 0x4C80, 0xC600, 0x2640], color: 'red' };
+var listePieces = [i, j, l, o, s, t, z];
 
 var currentPiece = {};
 currentPiece.y = 0;
 currentPiece.x = 0;
 currentPiece.rotation = 0;
-currentPiece.type = i;
+currentPiece.type = randomChoice(listePieces);
 
 var tailleX, //taille du block sur l'axe X
     tailleY; //taille du block sur l'axe Y
@@ -139,7 +141,7 @@ function move(direction) {
             }
             break;
         case DIR.UP:
-            var newRotation = currentPiece.rotation+1 <=3 ? currentPiece.rotation +1 : 0;
+            var newRotation = currentPiece.rotation + 1 <= 3 ? currentPiece.rotation + 1 : 0;
             if (canDraw(currentPiece.type, currentPiece.x, currentPiece.y + 1, newRotation)) {
                 currentPiece.rotation = newRotation;
             }
@@ -178,7 +180,7 @@ function dropPiece() {
 
     //on change l'objet par la nouvelle pièce
     currentPiece = {}
-    currentPiece.type = j;
+    currentPiece.type = randomChoice(listePieces);
     currentPiece.rotation = 0;
     currentPiece.x = 0;
     currentPiece.y = 0;
@@ -215,11 +217,19 @@ function drawPieces() {
     }
 }
 
+function random(min, max) {
+    return (min + (Math.random() * (max - min)));
+}
+
+function randomChoice(choix) {
+    return choix[Math.round(random(0, choix.length - 1))];
+}
+
+
 function run() {
     addEvents();
 
     draw(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation)
-
 }
 run();
 
