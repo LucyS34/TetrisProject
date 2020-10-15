@@ -45,7 +45,7 @@ var tailleX, //taille du block sur l'axe X
     tailleY; //taille du block sur l'axe Y
 
 var pieces = [], // tableau à deux dimensions x/y pour la position de tous les pièces (numMaxX*numMaxY)
-    canvas = document.getElementById('canvas'),
+    canvas = document.getElementById('canvasHome'),
     ctx = canvas.getContext('2d');
 
 
@@ -223,3 +223,16 @@ function run() {
 }
 run();
 
+const generatePlayersInfos = () => {
+    const playerId = sessionStorage.getItem("playerId");
+    const playerName = sessionStorage.getItem("playerName");
+
+    $("#idHomePlayer").text(`ID Joueur : ${playerId}`);
+    $("#nameHomePlayer").text(`Pseudo Joueur 1 : ${playerName}`);
+
+    // exemple pour joueur remote
+    $("#idRemotePlayer").text(`ID Joueur : 0000000`);
+    $("#nameRemotePlayer").text(`Pseudo Joueur 1 : Pseudo example`);
+}
+
+generatePlayersInfos();

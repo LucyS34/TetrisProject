@@ -6,25 +6,33 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
-        <script src="https://kit.fontawesome.com/dcdb35c51f.js"></script>
         <link rel="stylesheet" type="text/css" href="./neon_font/stylesheet.css">
-        <link rel="stylesheet" type="text/css" href="main.css">
+        <link rel="stylesheet" type="text/css" href="home.css">
     </head>
     <body>
         <div id="homeDiv">
-            <h2> Tetris</h2>
+            <h2>Tetris</h2>
             <p id="idPlayer"></p>
             <form class="form-inline">
                 <div class="form-group">
-                    <label for="namePlayer">Pseudo </label>
-                    <input type="text" class="form-control" id="namePlayer">
+                    <label for="namePlayer">Pseudo</label>
+                    <input type="text" class="form-control-sm" id="namePlayer" required>
                 </div>
             </form>
             <div>
-                <a class="btn shadow" role="button" id="buttonCreateGame" href="Partie.html"> Créer la partie </a>
-                <a class="btn shadow" role="button" id="buttonJoinGame"> Rejoindre la partie </a>
+                <button class="btn shadow" type="button" id="buttonCreateGame"> Créer une partie </button>
+                <button class="btn shadow" type="button" id="buttonJoinGame" data-toggle="collapse" data-target="#remoteId"> Rejoindre une partie </button>
+                <div class="collapse" id="remoteId">
+                    <form class="form-inline" id="formRemoteId">
+                        <div class="form-group">
+                            <label for="idRemotePlayer">ID Partie</label>
+                            <input type="text" class="form-control-sm" id="idRemotePlayer" required>
+                        </div>
+                        <button type="button" class="btn btn-dark shadow" id="buttonFormJoinGame">Rejoindre</button>
+                    </form>
+                </div>
             </div>
         </div>
     <script type="text/javascript" src="Home.js"></script>
-  </body>
+    </body>
 </html>

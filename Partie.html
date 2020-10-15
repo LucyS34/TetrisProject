@@ -1,16 +1,57 @@
-<html>
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8">    
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="./neon_font/stylesheet.css">
+        <link rel="stylesheet" type="text/css" href="partie.css">
+    </head>
+    <body>
+        <h1 id="title">TETRIS</h1>
+        <div id="game" class="row no-gutters">
+            <div id="homePlayerGame" class="col-lg-5">
+                <div id="infosGameHomePlayer">
+                    <p id="idHomePlayer"></p>
+                    <p id="nameHomePlayer"></p>
+                </div>
+                <div id="canvasHomePlayer">
+                    <canvas id="canvasHome" style="background: grey;" width="200" height="400">
+                    </canvas>
+                </div>
+            </div>
 
-<body>
+            <div id="infosGame" class="col-lg-1">
+                <div id="nextPieceDisplayed">
+                    <p>Suivant</p>
+                    <!-- 
+                        <canvas id="nextPieceCanvas" style="background: grey;" width="100" height="150">
+                        </canvas>
+                    -->
+                </div>
+                <div id="score">
+                    <p>Score</p>
+                </div>
+            </div>
 
-    <canvas id="canvas" style="background: grey;" width="150" height="250">
+            <div id="remotePlayerGame" class="col-lg-5">
+                <div id="infosGameRemotePlayer">
+                    <p id="idRemotePlayer"></p>
+                    <p id="nameRemotePlayer"></p>
+                </div>
+                <div id="canvasRemotePlayer">
+                    <p>Canvas emplacement</p>
+                    <!--  
+                        <canvas id="canvasRemote" style="background: grey;" width="150" height="250">
+                        </canvas>
+                    -->
+                </div>   
+            </div>
+        </div>
+    <script type="text/javascript" src="Partie.js"></script>
+    </body>
 
-    </canvas>
-
-
-    
-
-</body>
-
-<script type="text/javascript" src="Partie.js"></script>
 
 </html>

@@ -17,7 +17,9 @@ body {
     margin-top: 10px;
 }
 
-#homeDiv input {
+
+
+ #buttonFormJoinGame {
     margin-left: 10px;
     font-size: 14px;
 }
@@ -28,7 +30,7 @@ body {
     color: white;
 }
 
-#buttonJoinGame {
+#homeDiv input, #buttonJoinGame, #buttonFormJoinGame {
     margin-left: 10px;
 
 }

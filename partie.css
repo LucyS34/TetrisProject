@@ -1,0 +1,39 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'beonmedium';
+}
+
+#game {
+    display: flex;
+    justify-content: space-evenly;
+}
+
+#infosGame {
+    align-self: center;
+}
+
+#remotePlayerGame {
+    border: 2px solid red;
+}
+
+#homePlayerGame {
+    border: 2px solid yellow;
+}
+
+#canvasHomePlayer, #canvasRemotePlayer {
+    display: flex;
+    justify-content: center;
+}
+
+#nextPieceDisplayed, #score {
+    display: flex;
+    justify-content: center;
+    height: 200px;
+    font-size: 14px;
+    border: 2px solid black;
+}
+
+#score {
+    margin-top: 10px;
+}
