@@ -25,7 +25,8 @@ $("#buttonFormJoinGame").click( () =>
         } else {
             sessionStorage.setItem("playerName", name);
             sessionStorage.setItem("playerId", idPlayer);
-            // code nécessaire pour la connexion peer to peer
+            sessionStorage.setItem("gameIdToJoin",remoteId);
+            window.location.href = "Partie.html"; 
         }
     }
 );

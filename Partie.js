@@ -5,11 +5,14 @@
 
 var KEY = { ESC: 27, SPACE: 32, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40 };
 var DIR = { UP: 0, LEFT: 1, RIGHT: 2, DOWN: 3 };
+var ACTIONS = { MOVE: 1, DROP: 2, ROTATE: 3, INIT: 4, INITPSEUDO: 5, START: 6 }
 var numMaxX = 10; // nombre de pièces tetris max en largeur
 var numMaxY = 20; // nombre de pièces tetris max en hauteur
 
 var nbMaxPieceX = 10;// nombre max de block tetris X
 var nbMaxPieceY = 20;// nombre max de block tetris Y
+
+var objToSend = { action: null, value: null };
 
 // https://github.com/jakesgordon/javascript-tetris/blob/master/index.html
 //-------------------------------------------------------------------------
@@ -47,8 +50,12 @@ var tailleX, //taille du block sur l'axe X
     tailleY; //taille du block sur l'axe Y
 
 var pieces = [], // tableau à deux dimensions x/y pour la position de tous les pièces (numMaxX*numMaxY)
+    piecesAdverses = [],
     canvas = document.getElementById('canvasHome'),
-    ctx = canvas.getContext('2d');
+    ctx = canvas.getContext('2d'),
+    canvasAdversaire = document.getElementById('canvasRemote'),
+    ctxAdversaire = canvasAdversaire.getContext("2d"),
+    currentPeer = null;
 
 
 
@@ -88,16 +95,23 @@ function canDraw(typePiece, x, y, rotation) {
 }
 
 // permet de dessiner une pièce
-function draw(typePiece, x, y, rotation) {
+function draw(typePiece, x, y, rotation, isThisPlayer) {
     chaqueMorceauPiece(typePiece, x, y, rotation, (x, y, color) => {
-        drawMorceauPiece(x, y, color);
+        drawMorceauPiece(x, y, color, isThisPlayer);
     })
 }
 
-function drawMorceauPiece(x, y, color) {
-    ctx.fillStyle = color;
-    ctx.fillRect(x * tailleX, y * tailleY, tailleX, tailleY);
-    ctx.strokeRect(x * tailleX, y * tailleY, tailleX, tailleY);
+function drawMorceauPiece(x, y, color, isThisPlayer) {
+    let context = null
+    if (isThisPlayer) {
+        context = ctx;
+    } else {
+        context = ctxAdversaire;
+    }
+
+    context.fillStyle = color;
+    context.fillRect(x * tailleX, y * tailleY, tailleX, tailleY);
+    context.strokeRect(x * tailleX, y * tailleY, tailleX, tailleY);
 }
 
 function addEvents() {
@@ -108,12 +122,41 @@ function addEvents() {
 function keydown(e) {
     var handled = false;
     // selon le code de la touche préssée on traite en conséquence
+
     switch (e.keyCode) {
-        case KEY.LEFT: move(DIR.LEFT); handled = true; break;
-        case KEY.RIGHT: move(DIR.RIGHT); handled = true; break;
-        case KEY.DOWN: move(DIR.DOWN); handled = true; break;
-        case KEY.SPACE: dropPiece(); handled = true; break;
-        case KEY.UP: move(DIR.UP); handled = true; break;
+        case KEY.LEFT:
+            move(DIR.LEFT, true);
+            handled = true;
+            objToSend.action = ACTIONS.MOVE;
+            objToSend.value = DIR.LEFT;
+            connexion.send(JSON.stringify(objToSend));
+            break;
+        case KEY.RIGHT:
+            move(DIR.RIGHT, true);
+            handled = true;
+            objToSend.action = ACTIONS.MOVE;
+            objToSend.value = DIR.RIGHT;
+            connexion.send(JSON.stringify(objToSend));
+            break;
+        case KEY.DOWN:
+            move(DIR.DOWN, true);
+            handled = true;
+            objToSend.action = ACTIONS.MOVE;
+            objToSend.value = DIR.DOWN;
+            connexion.send(JSON.stringify(objToSend));
+            break;
+        case KEY.SPACE:
+            dropPiece(true);
+            handled = true;
+            objToSend.action = ACTIONS.DROP;
+            connexion.send(JSON.stringify(objToSend));
+            break;
+        case KEY.UP:
+            move(DIR.UP, true);
+            handled = true;
+            objToSend.action = ACTIONS.ROTATE;
+            connexion.send(JSON.stringify(objToSend));
+            break;
     }
 
     if (handled) {
@@ -122,7 +165,7 @@ function keydown(e) {
 }
 
 // permet de déplacer la pièce "en cours"
-function move(direction) {
+function move(direction, isThisPlayer) {
     switch (direction) {
         // à chaque fois on verifie que l'on peut déplacer la pièce
         case DIR.LEFT:
@@ -149,15 +192,23 @@ function move(direction) {
     }
 
     // on vide le canvas
-    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    clearCanvas(isThisPlayer);
     // on dessine les pièces déjà posées
-    drawPieces();
+    drawPieces(isThisPlayer);
     // on dessine la pièce que l'on viens de bouger
-    draw(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation);
+    draw(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation, isThisPlayer);
+}
+
+function clearCanvas(isThisPlayer) {
+    if (isThisPlayer) {
+        ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    } else {
+        ctxAdversaire.clearRect(0, 0, canvasAdversaire.clientWidth, canvasAdversaire.clientHeight);
+    }
 }
 
 //permet de lacher une pièce
-function dropPiece() {
+function dropPiece(isThisPlayer) {
     //on regarde le y le plus bas possible pour poser la pièce
     let lowestY = GetLowestYPossible(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation);
     // on vide le canvas
@@ -176,7 +227,7 @@ function dropPiece() {
     });
 
     // on dessine les pièces déjà posées, dont celle que l'on viens de poser
-    drawPieces();
+    drawPieces(isThisPlayer);
 
     //on change l'objet par la nouvelle pièce
     currentPiece = {}
@@ -202,15 +253,30 @@ function GetLowestYPossible(typePiece, x, y, rotation) {
 }
 
 // permet de dessiner toutes les pièces déjà posées
-function drawPieces() {
-    for (let cpt1 = 0; cpt1 < numMaxX; cpt1++) {
-        if (pieces[cpt1] != null) {
+function drawPieces(isThisPlayer) {
+    if (isThisPlayer) {
+        for (let cpt1 = 0; cpt1 < numMaxX; cpt1++) {
+            if (pieces[cpt1] != null) {
 
-            for (let cpt2 = 0; cpt2 < numMaxY; cpt2++) {
-                if (pieces[cpt1][cpt2] != null) {
-                    let piece = pieces[cpt1][cpt2];
+                for (let cpt2 = 0; cpt2 < numMaxY; cpt2++) {
+                    if (pieces[cpt1][cpt2] != null) {
+                        let piece = pieces[cpt1][cpt2];
 
-                    drawMorceauPiece(cpt1, cpt2, piece.type.color);
+                        drawMorceauPiece(cpt1, cpt2, piece.type.color, isThisPlayer);
+                    }
+                }
+            }
+        }
+    } else {
+        for (let cpt1 = 0; cpt1 < numMaxX; cpt1++) {
+            if (piecesAdverses[cpt1] != null) {
+
+                for (let cpt2 = 0; cpt2 < numMaxY; cpt2++) {
+                    if (piecesAdverses[cpt1][cpt2] != null) {
+                        let piece = piecesAdverses[cpt1][cpt2];
+
+                        drawMorceauPiece(cpt1, cpt2, piece.type.color, isThisPlayer);
+                    }
                 }
             }
         }
@@ -225,13 +291,93 @@ function randomChoice(choix) {
     return choix[Math.round(random(0, choix.length - 1))];
 }
 
-
 function run() {
     addEvents();
 
-    draw(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation)
+    draw(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation, true)
 }
-run();
+
+function peerInitialize() {
+
+    currentPeer = new Peer(sessionStorage.getItem("playerId"), { debug: 2});
+    var connexion = null;
+
+    // lorsque que quelqu'un se connecte
+    currentPeer.on('connection', function (conn) {
+
+        console.log("connection method");
+        //on verifie qu'iln'y a pas déjà une connexion
+        if (connexion && connexion.open) {
+            conn.on('open', function () {
+                conn.send("déjà connecté à un autre client");
+                setTimeout(function () { conn.close(); }, 500);
+            });
+            return;
+        }
+
+        connexion = conn;
+
+        // connexion.on('open', function () {
+        //     console.log("quelqu'un se connecte à moi");
+        //     $("#idRemotePlayer").text(`ID Joueur :` + connexion.peer);
+        // });
+
+        readDataFromConn(connexion);
+
+        $("#idRemotePlayer").text(`ID Joueur :` + connexion.peer);
+
+        //une fois que l'on est connecté on lance le jeu
+        objToSend.action = ACTIONS.INIT;
+        objToSend.value = listePieces;
+        connexion.send(JSON.stringify(objToSend));
+
+        objToSend.action = ACTIONS.INITPSEUDO;
+        objToSend.value = sessionStorage.getItem("playerName");
+        connexion.send(JSON.stringify(objToSend));
+
+        objToSend.action = ACTIONS.START;
+        connexion.send(JSON.stringify(objToSend));
+        run();
+    });
+
+    currentPeer.on('error', function (err) {
+        console.log("une erreur est survenue : " + err.type);
+        console.log(err);
+    });
+
+    //currentPeer.connect(sessionStorage.getItem("playerId"));
+}
+
+function readDataFromConn(connect) {
+    connect.on('data', function (data) {
+        console.log("Data recieved");
+        console.log(data);
+        var obj = JSON.parse(data)
+        switch (obj.action) {
+            case ACTIONS.INIT:
+                listePieces = obj.value;
+                break;
+            case ACTIONS.INITPSEUDO:
+                $("#nameRemotePlayer").text(`Pseudo Joueur 1 : ` + obj.value);
+                break;
+            case ACTIONS.MOVE:
+                move(obj.value, false);
+                break;
+            case ACTIONS.DROP:
+                dropPiece(false);
+                break;
+            case ACTIONS.ROTATE:
+                move(DIR.UP, false);
+                break;
+            case ACTIONS.START:
+                run();
+                break;
+            default:
+                console.log(data);
+                break;
+        };
+    });
+}
 
 const generatePlayersInfos = () => {
     const playerId = sessionStorage.getItem("playerId");
@@ -239,15 +385,27 @@ const generatePlayersInfos = () => {
 
     $("#idHomePlayer").text(`ID Joueur : ${playerId}`);
     $("#nameHomePlayer").text(`Pseudo Joueur 1 : ${playerName}`);
-
-    // exemple pour joueur remote
-    $("#idRemotePlayer").text(`ID Joueur : 0000000`);
-    $("#nameRemotePlayer").text(`Pseudo Joueur 1 : Pseudo example`);
 }
 
-generatePlayersInfos();
+function verifyIsTryingToConnect() {
+    let idToJoin = sessionStorage.getItem("gameIdToJoin");
+    if (idToJoin) {
+        console.log("rejoins la partie : " + idToJoin);
+        console.log(idToJoin);
+        console.log(typeof(idToJoin));
+        connexion = currentPeer.connect(idToJoin);
+        console.log(connexion);
 
-$("#currentScore").text(`points`);
-$("#currentLineScore").text(`Lignes`);
+        readDataFromConn(connexion);
+        connexion.send("i'm working bitch");
+        $("#idRemotePlayer").text(`ID Joueur :` + connexion.peer);
+    }
+}
 
 $('.modal').modal('show');
+$("#currentScore").text(`points`);
+$("#currentLineScore").text(`Lignes`);
+peerInitialize();
+generatePlayersInfos();
+verifyIsTryingToConnect();
+
