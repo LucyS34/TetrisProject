@@ -10,7 +10,7 @@ $("#buttonCreateGame").click( () =>
             sessionStorage.setItem("playerName", name);
             sessionStorage.setItem("playerId", idPlayer);
             // ! Chemin à remplacer par votre emplacement local
-            window.location.href = "C:/Users/Cours EPSI/Documents/TetrisProject/TetrisProject/Partie.html"; 
+            window.location.href = "Partie.html"; 
         }
     }
 );
