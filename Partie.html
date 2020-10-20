@@ -6,12 +6,57 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+        <script src="https://kit.fontawesome.com/dcdb35c51f.js"></script>
         <link rel="stylesheet" type="text/css" href="./neon_font/stylesheet.css">
         <link rel="stylesheet" type="text/css" href="partie.css">
     </head>
     <body>
         <h1 id="title">TETRIS</h1>
         <div id="game" class="row no-gutters">
+
+            <div class="modal" tabindex="-1" role="dialog">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h2 class="modal-title">Comment jouer</h2>
+                      <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span class="fas fa-times"></span>
+                      </button>
+                    </div>
+                    <div class="modal-body">
+                        <h4>Les déplacements</h4>
+                        <p class="firstP">
+                            <span class="fas fa-caret-square-up fa-lg"></span> 
+                            Changer la rotation de la pièce
+                        </p>
+                        <p>
+                            <span class="fas fa-caret-square-left fa-lg"></span> 
+                            Déplacer la pièce vers la gauche
+                        </p>
+                        <p>
+                            <span class="fas fa-caret-square-right fa-lg"></span> 
+                            Déplacer la pièce vers la droite
+                        </p>
+                        <p>
+                            <span class="fas fa-caret-square-down fa-lg"></span> 
+                            Déplacer la pièce vers le bas
+                        </p>
+                        <p>
+                            <span class="fa fa-minus fa-lg"></span>
+                            (Barre d'espace) Valider le placement de la pièce
+                        </p>
+
+                        <h4>Le score</h4>
+                        <p class="firstP">Chaque ligne fait remporter 10 points</p>
+                        <p>La partie s'arrête lorsqu'un des joueur ne peut plus poser de pièces</p>
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             <div id="homePlayerGame" class="col-lg-5">
                 <div id="infosGameHomePlayer">
                     <p id="idHomePlayer"></p>
@@ -26,13 +71,17 @@
             <div id="infosGame" class="col-lg-1">
                 <div id="nextPieceDisplayed">
                     <p>Suivant</p>
-                    <!-- 
-                        <canvas id="nextPieceCanvas" style="background: grey;" width="100" height="150">
+                    <div>
+                        <canvas id="nextPieceCanvas" style="background: grey;" width="100" height="155">
                         </canvas>
-                    -->
+                    </div>
                 </div>
                 <div id="score">
                     <p>Score</p>
+                    <div>
+                        <p id="currentScore"></p>
+                        <p id="currentLineScore"></p>
+                    </div>
                 </div>
             </div>
 
@@ -42,11 +91,8 @@
                     <p id="nameRemotePlayer"></p>
                 </div>
                 <div id="canvasRemotePlayer">
-                    <p>Canvas emplacement</p>
-                    <!--  
-                        <canvas id="canvasRemote" style="background: grey;" width="150" height="250">
+                        <canvas id="canvasRemote" style="background: grey;" width="200" height="400">
                         </canvas>
-                    -->
                 </div>   
             </div>
         </div>

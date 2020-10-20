@@ -4,9 +4,14 @@ body {
     font-family: 'beonmedium';
 }
 
+#title {
+    margin-top: 10px;
+}
+
 #game {
     display: flex;
     justify-content: space-evenly;
+    margin-top: 30px;
 }
 
 #infosGame {
@@ -14,13 +19,15 @@ body {
 }
 
 #remotePlayerGame {
-    border: 2px solid red;
+    border: 2px solid black;
 }
 
 #homePlayerGame {
-    border: 2px solid yellow;
+    border: 2px solid black;
 }
-
+#idHomePlayer, #idRemotePlayer {
+    margin-bottom: 0;
+}
 #canvasHomePlayer, #canvasRemotePlayer {
     display: flex;
     justify-content: center;
@@ -28,7 +35,8 @@ body {
 
 #nextPieceDisplayed, #score {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
     height: 200px;
     font-size: 14px;
     border: 2px solid black;
@@ -36,4 +44,24 @@ body {
 
 #score {
     margin-top: 10px;
+}
+
+#currentScore, #currentLineScore {
+    margin-top: 20px;
+}
+
+#currentLineScore {
+    margin-top: 30px;
+}
+
+.modal p {
+    font-size: 14px;
+}
+
+.modal span {
+    margin-right: 20px;
+}
+
+.firstP {
+    margin-top: 20px;
 }

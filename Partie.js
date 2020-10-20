@@ -246,3 +246,8 @@ const generatePlayersInfos = () => {
 }
 
 generatePlayersInfos();
+
+$("#currentScore").text(`points`);
+$("#currentLineScore").text(`Lignes`);
+
+$('.modal').modal('show');
