@@ -327,7 +327,7 @@ function peerInitialize() {
 
     currentPeer.on('open', function (id) {
         sessionStorage.setItem("playerId", id);
-        $("#idHomePlayer").text(`ID Partie : ${id}`);
+        $("#gameId").text(`ID Partie : ${id}`);
         verifyIsTryingToConnect();
     })
     // lorsque que quelqu'un se connecte
@@ -381,7 +381,7 @@ function readDataFromConn(connect) {
                 listePieces = obj.value;
                 break;
             case ACTIONS.INITPSEUDO:
-                $("#nameRemotePlayer").text(`Pseudo Joueur 1 : ` + obj.value);
+                $("#nameRemotePlayer").text(`Pseudo Joueur 2 : ` + obj.value);
                 break;
             case ACTIONS.MOVE:
                 move(adversairePiece, obj.value, false);
@@ -413,8 +413,6 @@ function readDataFromConn(connect) {
 
 const generateGameStartInfos = () => {
     const playerName = sessionStorage.getItem("playerName");
-    // ! Compléter le text de gameId avec l'id de la partie
-    $("#gameId").text(`ID Partie :`);
     $("#nameHomePlayer").text(`Pseudo Joueur 1 : ${playerName}`);
 }
 
