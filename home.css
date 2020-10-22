@@ -13,7 +13,7 @@ body {
     font-family: 'beonmedium';
 }
 
-#homeDiv form, #idPlayer {
+#homeDiv form {
     margin-top: 10px;
 }
 

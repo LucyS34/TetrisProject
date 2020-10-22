@@ -1,6 +1,3 @@
-const idsArray = new Set();
-let idPlayer = "";
-
 $("#buttonCreateGame").click( () => 
     { 
         const name = $("#namePlayer").val();
@@ -8,8 +5,6 @@ $("#buttonCreateGame").click( () =>
             window.alert("Veuillez entrez un pseudo");
         } else {
             sessionStorage.setItem("playerName", name);
-            sessionStorage.setItem("playerId", idPlayer);
-            // ! Chemin à remplacer par votre emplacement local
             window.location.href = "Partie.html"; 
         }
     }
@@ -24,28 +19,8 @@ $("#buttonFormJoinGame").click( () =>
             window.alert("Veuillez entrez un pseudo et un ID de partie valide");
         } else {
             sessionStorage.setItem("playerName", name);
-            sessionStorage.setItem("playerId", idPlayer);
             sessionStorage.setItem("gameIdToJoin",remoteId);
             window.location.href = "Partie.html"; 
         }
     }
 );
-
-
-const generatePlayerId = () => {
-    let newId = "";
-    for (let i = 0; i < 3; i++) {
-        newId += (Math.floor(Math.random()*100)).toString(); 
-    }
-    const checkId = idsArray.has(newId); 
-    if(!checkId) {
-        idsArray.add(newId);
-        idPlayer = newId;
-        $("#idPlayer").text(`ID Joueur : ${idPlayer}`);
-    } else {
-        generatePlayerId();
-        return;
-    }
-}
-
-generatePlayerId();
