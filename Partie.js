@@ -324,7 +324,6 @@ function peerInitialize() {
 
         readDataFromConn(connexion);
 
-        $("#idRemotePlayer").text(`ID Joueur :` + connexion.peer);
 
         //une fois que l'on est connecté on lance le jeu
         objToSend.action = ACTIONS.INIT;
@@ -379,11 +378,10 @@ function readDataFromConn(connect) {
     });
 }
 
-const generatePlayersInfos = () => {
-    const playerId = sessionStorage.getItem("playerId");
+const generateGameStartInfos = () => {
     const playerName = sessionStorage.getItem("playerName");
-
-    $("#idHomePlayer").text(`ID Joueur : ${playerId}`);
+    // ! Compléter le text de gameId avec l'id de la partie
+    $("#gameId").text(`ID Partie :`);
     $("#nameHomePlayer").text(`Pseudo Joueur 1 : ${playerName}`);
 }
 
@@ -398,7 +396,6 @@ function verifyIsTryingToConnect() {
 
         readDataFromConn(connexion);
         connexion.send("i'm working bitch");
-        $("#idRemotePlayer").text(`ID Joueur :` + connexion.peer);
     }
 }
 
@@ -406,6 +403,6 @@ $('.modal').modal('show');
 $("#currentScore").text(`points`);
 $("#currentLineScore").text(`Lignes`);
 peerInitialize();
-generatePlayersInfos();
+generateGameStartInfos();
 verifyIsTryingToConnect();
 
