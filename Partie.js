@@ -4,6 +4,8 @@
 // TODO : supression de ligne (on drop piece)
 // TODO : Perdre
 
+var DEBUG = true;
+
 var KEY = { ESC: 27, SPACE: 32, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40 };
 var DIR = { UP: 0, LEFT: 1, RIGHT: 2, DOWN: 3 };
 var ACTIONS = { MOVE: 1, DROP: 2, ROTATE: 3, INIT: 4, INITPSEUDO: 5, START: 6, SELECTPIECE: 7 }
@@ -13,7 +15,6 @@ var numMaxY = 20; // nombre de pièces tetris max en hauteur
 var nbMaxPieceX = 10;// nombre max de block tetris X
 var nbMaxPieceY = 20;// nombre max de block tetris Y
 
-var objToSend = { action: null, value: null };
 
 // https://github.com/jakesgordon/javascript-tetris/blob/master/index.html
 //-------------------------------------------------------------------------
@@ -41,20 +42,13 @@ var t = { size: 3, blocks: [0x0E40, 0x4C40, 0x4E00, 0x4640], color: 'purple' };
 var z = { size: 3, blocks: [0x0C60, 0x4C80, 0xC600, 0x2640], color: 'red' };
 var listePieces = [i, j, l, o, s, t, z];
 
-var currentPiece = {};
-currentPiece.y = 0;
-currentPiece.x = 0;
-currentPiece.rotation = 0;
+var currentPiece = { y: 0, x: 0, rotation: 0, type: null };
 currentPiece.type = randomChoice(listePieces);
+// on utilise le JSON pour ne pas avoir de référence à la valeur 
+var adversairePiece = { y: 0, x: 0, rotation: 0, type: JSON.parse(JSON.stringify(currentPiece.type)) };
 
-var adversairePiece = {};
-adversairePiece.y = 0;
-adversairePiece.x = 0;
-adversairePiece.rotation = 0;
-adversairePiece.type = currentPiece.type
-
-var tailleX, //taille du block sur l'axe X
-    tailleY; //taille du block sur l'axe Y
+var tailleX, // taille du block sur l'axe X
+    tailleY; // taille du block sur l'axe Y
 
 var pieces = [], // tableau à deux dimensions x/y pour la position de tous les pièces (numMaxX*numMaxY)
     piecesAdverses = [],
@@ -89,12 +83,12 @@ function chaqueMorceauPiece(typePiece, x, y, rotation, func) {
     }
 }
 
-// permet de savoir si la palce est occupée
+// permet de savoir si la place est occupée
 function canDraw(typePiece, x, y, rotation, isThisPlayer) {
     let canDrawResult = true;
 
     chaqueMorceauPiece(typePiece, x, y, rotation, (x, y) => {
-        //on regarde tous les cas où on ne pourrais pas poser de block
+        // on regarde tous les cas où on ne pourrais pas poser de block
         if (x < 0 || y > nbMaxPieceY - 1 || x > nbMaxPieceX - 1 || y < 0 || (isThisPlayer ? (pieces && pieces[x] ? pieces[x][y] : null) : ((piecesAdverses && piecesAdverses[x] ? piecesAdverses[x][y] : null)))) {
             canDrawResult = false;
         }
@@ -103,12 +97,13 @@ function canDraw(typePiece, x, y, rotation, isThisPlayer) {
 }
 
 // permet de dessiner une pièce
-function draw(typePiece, x, y, rotation, isThisPlayer) {
-    chaqueMorceauPiece(typePiece, x, y, rotation, (x, y, color) => {
+function draw(piece, isThisPlayer) {
+    chaqueMorceauPiece(piece.type, piece.x, piece.y, piece.rotation, (x, y, color) => {
         drawMorceauPiece(x, y, color, isThisPlayer);
     })
 }
 
+// dessine sur le canvas le morceau d'une pièce
 function drawMorceauPiece(x, y, color, isThisPlayer) {
     let context = null
     if (isThisPlayer) {
@@ -135,35 +130,27 @@ function keydown(e) {
         case KEY.LEFT:
             move(currentPiece, DIR.LEFT, true);
             handled = true;
-            objToSend.action = ACTIONS.MOVE;
-            objToSend.value = DIR.LEFT;
-            connexion.send(JSON.stringify(objToSend));
+            sendMessage(ACTIONS.MOVE, DIR.LEFT);
             break;
         case KEY.RIGHT:
             move(currentPiece, DIR.RIGHT, true);
             handled = true;
-            objToSend.action = ACTIONS.MOVE;
-            objToSend.value = DIR.RIGHT;
-            connexion.send(JSON.stringify(objToSend));
+            sendMessage(ACTIONS.MOVE, DIR.RIGHT);
             break;
         case KEY.DOWN:
             move(currentPiece, DIR.DOWN, true);
             handled = true;
-            objToSend.action = ACTIONS.MOVE;
-            objToSend.value = DIR.DOWN;
-            connexion.send(JSON.stringify(objToSend));
+            sendMessage(ACTIONS.MOVE, DIR.DOWN);
             break;
         case KEY.SPACE:
             dropPiece(currentPiece, pieces, true);
             handled = true;
-            objToSend.action = ACTIONS.DROP;
-            connexion.send(JSON.stringify(objToSend));
+            sendMessage(ACTIONS.DROP);
             break;
         case KEY.UP:
             move(currentPiece, DIR.UP, true);
             handled = true;
-            objToSend.action = ACTIONS.ROTATE;
-            connexion.send(JSON.stringify(objToSend));
+            sendMessage(ACTIONS.ROTATE, null);
             break;
     }
 
@@ -204,9 +191,10 @@ function move(pieceToMove, direction, isThisPlayer) {
     // on dessine les pièces déjà posées
     drawPieces(isThisPlayer);
     // on dessine la pièce que l'on viens de bouger
-    draw(pieceToMove.type, pieceToMove.x, pieceToMove.y, pieceToMove.rotation, isThisPlayer);
+    draw(pieceToMove, isThisPlayer);
 }
 
+// vide le canvas
 function clearCanvas(isThisPlayer) {
     if (isThisPlayer) {
         ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
@@ -215,16 +203,17 @@ function clearCanvas(isThisPlayer) {
     }
 }
 
-//permet de lacher une pièce
+// permet de lacher une pièce
+// retourne la nouvelle pièce
 function dropPiece(pieceToDrop, pieceList, isThisPlayer) {
-    //on regarde le y le plus bas possible pour poser la pièce
+    // on regarde le y le plus bas possible pour poser la pièce
     let lowestY = GetLowestYPossible(pieceToDrop.type, pieceToDrop.x, pieceToDrop.y, pieceToDrop.rotation, isThisPlayer);
     // on vide le canvas
     clearCanvas(isThisPlayer);
 
-    //on pose la pièce
+    // on pose la pièce
     chaqueMorceauPiece(pieceToDrop.type, pieceToDrop.x, lowestY, pieceToDrop.rotation, (x, y) => {
-        //on verifie l'endoit où on souhaite poser la pièce et on met un tableau vide si c'est null
+        // on verifie l'endoit où on souhaite poser la pièce et on met un tableau vide si c'est null
         if (pieceList[x] == null) {
             pieceList[x] = [];
         }
@@ -237,17 +226,20 @@ function dropPiece(pieceToDrop, pieceList, isThisPlayer) {
     // on dessine les pièces déjà posées, dont celle que l'on viens de poser
     drawPieces(isThisPlayer);
 
-    //on change l'objet par la nouvelle pièce
+    // on change l'objet par la nouvelle pièce
     pieceToDrop = {}
-    pieceToDrop.type = randomChoice(listePieces); //TODO à changer ?
+    pieceToDrop.type = listePieces.shift(); // TODO à changer ?
     pieceToDrop.rotation = 0;
     pieceToDrop.x = 0;
     pieceToDrop.y = 0;
-    //on dessine la nouvelle pièce
-    draw(pieceToDrop.type, pieceToDrop.x, pieceToDrop.y, pieceToDrop.rotation, isThisPlayer);
+    
+    // on dessine la nouvelle pièce
+    draw(pieceToDrop, isThisPlayer);
 
+    return pieceToDrop;
 }
 
+// retourne la valeur y la plus "basse" possible pour poser cette pièce 
 function GetLowestYPossible(typePiece, x, y, rotation, isThisPlayer) {
     let lowestY = y;
     for (let cpt = y + 1; cpt < nbMaxPieceY; cpt++) {
@@ -291,6 +283,7 @@ function drawPieces(isThisPlayer) {
     }
 }
 
+// retourne un nombre aléatoire entre le min et max
 function random(min, max) {
     return (min + (Math.random() * (max - min)));
 }
@@ -301,16 +294,16 @@ function randomChoice(choix) {
 
 function run() {
     addEvents();
-
-    draw(currentPiece.type, currentPiece.x, currentPiece.y, currentPiece.rotation, true)
+    // on dessine la première pièce
+    draw(currentPiece, true)
 }
 
 function startGame() {
     run();
-    objToSend.action = ACTIONS.SELECTPIECE;
-    objToSend.value = currentPiece;
-    connexion.send(JSON.stringify(objToSend));
-    draw(adversairePiece.type, adversairePiece.x, adversairePiece.y, adversairePiece.rotation, false)
+    // on envoie la première pièce à selectionner
+    sendMessage(ACTIONS.SELECTPIECE, currentPiece);
+    // on dessine la pièce de l'adversaire
+    draw(adversairePiece, false)
 }
 
 ///-------------------------------
@@ -325,6 +318,7 @@ function peerInitialize() {
     currentPeer = new Peer();
     connexion = null;
 
+    // on attends que la connexion s'ouvre entre les deux joueurs
     currentPeer.on('open', function (id) {
         sessionStorage.setItem("playerId", id);
         $("#gameId").text(`ID Partie : ${id}`);
@@ -334,21 +328,21 @@ function peerInitialize() {
     currentPeer.on('connection', function (conn) {
         connexion = conn;
 
+        // lorsque que quelqu'un se connecte à la partie que j'ai créée
         connexion.on('open', function () {
-            console.log("quelqu'un se connecte à moi ...");
-            //$("#idRemotePlayer").text(`ID Joueur :` + connexion.peer);
 
-            //une fois que l'on est connecté on lance le jeu
-            objToSend.action = ACTIONS.INIT;
-            objToSend.value = listePieces;
-            connexion.send(JSON.stringify(objToSend));
+            console.log(connexion.metadata.name + " se connecte à moi ...");
 
-            objToSend.action = ACTIONS.INITPSEUDO;
-            objToSend.value = sessionStorage.getItem("playerName");
-            connexion.send(JSON.stringify(objToSend));
+            $("#nameRemotePlayer").text(`Joueur 2 : ` + connexion.metadata.name);
 
-            objToSend.action = ACTIONS.START;
-            connexion.send(JSON.stringify(objToSend));
+            // on initialise la liste des pièce de l'autre joueur pour qu'elle soit la même que la notre
+            sendMessage(ACTIONS.INIT, listePieces);
+
+            // on envoie notre pseudo à l'autre joueur
+            sendMessage(ACTIONS.INITPSEUDO, sessionStorage.getItem("playerName"));
+
+            // une fois que l'on est connecté on lance le jeu
+            sendMessage(ACTIONS.START, null);
             startGame();
         });
 
@@ -360,6 +354,15 @@ function peerInitialize() {
     currentPeer.on('error', function (err) {
         console.log("une erreur est survenue : " + err.type);
         console.log(err);
+        
+        if(DEBUG){
+            // si les serveurs public sont plein on reviens sur l'ecran d'accueil
+            if(err.message === "Server has reached its concurrent user limit"){
+                setTimeout(()=>{
+                    window.location.href = "Home.html";
+                },1000);
+            }
+        }
     });
 
     currentPeer.on('disconnected', function () {
@@ -367,27 +370,33 @@ function peerInitialize() {
     });
 }
 
+// permet de lire les données que l'on reçoit de l'autre joueur
 function readDataFromConn(connect) {
     connect.on('data', function (data) {
-        console.log("Data recieved");
-        console.log(data);
+        if (DEBUG) {
+            console.log("Data recieved");
+            console.log(data);
+        }
+
         try {
             var obj = JSON.parse(data)
         } catch {
-
+            console.log("une erreur c'est produite lors de la désérialisation du message");
         }
+
         switch (obj.action) {
             case ACTIONS.INIT:
                 listePieces = obj.value;
                 break;
             case ACTIONS.INITPSEUDO:
-                $("#nameRemotePlayer").text(`Pseudo Joueur 2 : ` + obj.value);
+                $("#nameRemotePlayer").text(`Joueur 2 : ` + obj.value);
                 break;
             case ACTIONS.MOVE:
                 move(adversairePiece, obj.value, false);
                 break;
             case ACTIONS.DROP:
-                dropPiece(adversairePiece, piecesAdverses, false);
+                let newPiece = dropPiece(adversairePiece, piecesAdverses, false);
+                sendMessage(ACTIONS.SELECTPIECE,newPiece);
                 break;
             case ACTIONS.ROTATE:
                 move(adversairePiece, DIR.UP, false);
@@ -396,13 +405,13 @@ function readDataFromConn(connect) {
                 startGame();
                 break;
             case ACTIONS.SELECTPIECE:
-                console.log("selectpiece")
-                adversairePiece.y = obj.value.y;
-                adversairePiece.x = obj.value.x;
-                adversairePiece.rotation = obj.value.rotation;
-                adversairePiece.type = obj.value.type;
+                let p = obj.value;
+                adversairePiece.y = p.y;
+                adversairePiece.x = p.x;
+                adversairePiece.rotation = p.rotation;
+                adversairePiece.type = p.type;
                 clearCanvas(false);
-                draw(adversairePiece.type,adversairePiece.x,adversairePiece.y,adversairePiece.rotation,false);
+                draw(adversairePiece, false);
                 break;
             default:
                 console.log(data);
@@ -413,7 +422,7 @@ function readDataFromConn(connect) {
 
 const generateGameStartInfos = () => {
     const playerName = sessionStorage.getItem("playerName");
-    $("#nameHomePlayer").text(`Pseudo Joueur 1 : ${playerName}`);
+    $("#nameHomePlayer").text(`Joueur 1 : ${playerName}`);
 }
 
 function verifyIsTryingToConnect() {
@@ -432,20 +441,26 @@ function verifyIsTryingToConnect() {
             }
         );
         connexion.on('open', () => {
+            // lorsqu'on se connecte à une partie
             readDataFromConn(connexion);
 
-            objToSend.action = ACTIONS.INITPSEUDO
-            objToSend.value = sessionStorage.getItem("playerName");
-            connexion.send(JSON.stringify(objToSend));
-
+            $("#gameId").text(`ID Partie : ${connexion.peer}`);
         });
+    }
+}
 
-        console.log(connexion);
+function sendMessage(actionToSend, valueToSend = null) {
+    let objToSend = { action: actionToSend, value: valueToSend };
+    if (connexion && connexion.open) {
+        connexion.send(JSON.stringify(objToSend));
+    } else {
+        console.log("une erreur c'est produite lors de l'envoi des données suivantes, le connexion n'est pas ouverte");
+        console.log(objToSend);
     }
 }
 
 peerInitialize();
-generatePlayersInfos();
+generateGameStartInfos();
 $('.modal').modal('show');
 $("#currentScore").text(`points`);
 $("#currentLineScore").text(`Lignes`);
