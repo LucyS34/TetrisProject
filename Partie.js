@@ -1,20 +1,21 @@
-// document.addEventListener('DOMContentLoaded', () => {
-// TODO : https://github.com/jmcker/Peer-to-Peer-Cue-System
-// TODO : liste pièce aléatoire
-// TODO : supression de ligne (on drop piece)
+// https://github.com/jmcker/Peer-to-Peer-Cue-System
+// TODO : afficher pièce suivante
 // TODO : Perdre
 
 var DEBUG = true;
 
 var KEY = { ESC: 27, SPACE: 32, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40 };
 var DIR = { UP: 0, LEFT: 1, RIGHT: 2, DOWN: 3 };
-var ACTIONS = { MOVE: 1, DROP: 2, ROTATE: 3, INIT: 4, INITPSEUDO: 5, START: 6, SELECTPIECE: 7 }
+var ACTIONS = { MOVE: 1, DROP: 2, ROTATE: 3, INIT: 4, INITPSEUDO: 5, START: 6, SELECTPIECE: 7, ADDNEWPIECES: 8, FINALSCORE: 9 }
 var numMaxX = 10; // nombre de pièces tetris max en largeur
 var numMaxY = 20; // nombre de pièces tetris max en hauteur
 
 var nbMaxPieceX = 10;// nombre max de block tetris X
 var nbMaxPieceY = 20;// nombre max de block tetris Y
 
+var score = 0;
+var scoreFinalAdverse = null;
+var gameFinished = false;
 
 // https://github.com/jakesgordon/javascript-tetris/blob/master/index.html
 //-------------------------------------------------------------------------
@@ -40,18 +41,22 @@ var o = { size: 2, blocks: [0xCC00, 0xCC00, 0xCC00, 0xCC00], color: 'yellow' };
 var s = { size: 3, blocks: [0x06C0, 0x8C40, 0x6C00, 0x4620], color: 'green' };
 var t = { size: 3, blocks: [0x0E40, 0x4C40, 0x4E00, 0x4640], color: 'purple' };
 var z = { size: 3, blocks: [0x0C60, 0x4C80, 0xC600, 0x2640], color: 'red' };
-var listePieces = [i, j, l, o, s, t, z];
+var listePiecesModel = [i, j, l, o, s, t, z];
+
+
+var listePieces = getRandomPieceList(20);
+var listePiecesAdverses = Duplicate(listePieces);
 
 var currentPiece = { y: 0, x: 0, rotation: 0, type: null };
-currentPiece.type = randomChoice(listePieces);
+currentPiece.type = listePieces.shift();
 // on utilise le JSON pour ne pas avoir de référence à la valeur 
-var adversairePiece = { y: 0, x: 0, rotation: 0, type: JSON.parse(JSON.stringify(currentPiece.type)) };
+var adversairePiece = { y: 0, x: 0, rotation: 0, type: listePiecesAdverses.shift() };
 
 var tailleX, // taille du block sur l'axe X
     tailleY; // taille du block sur l'axe Y
 
-var pieces = [], // tableau à deux dimensions x/y pour la position de tous les pièces (numMaxX*numMaxY)
-    piecesAdverses = [],
+var piecesPosees = [], // tableau à deux dimensions [y,x] pour la position de tous les pièces (numMaxX*numMaxY)
+    piecesAdversesPosees = [],
     canvas = document.getElementById('canvasHome'),
     ctx = canvas.getContext('2d'),
     canvasAdversaire = document.getElementById('canvasRemote'),
@@ -65,6 +70,15 @@ canvas.width = canvas.clientWidth;  // on met la taille logique du canvas à sa 
 canvas.height = canvas.clientHeight; // idem
 tailleX = canvas.width / nbMaxPieceX; // taille en pixel d'une pièce tetris
 tailleY = canvas.height / nbMaxPieceY; // idem
+
+function getRandomPieceList(nbPieces) {
+    let lst = [];
+
+    for (let i = 0; i < nbPieces; i++) {
+        lst.push(randomChoice(listePiecesModel));
+    }
+    return lst;
+}
 
 function chaqueMorceauPiece(typePiece, x, y, rotation, func) {
     let bit,                        // bit
@@ -89,7 +103,7 @@ function canDraw(typePiece, x, y, rotation, isThisPlayer) {
 
     chaqueMorceauPiece(typePiece, x, y, rotation, (x, y) => {
         // on regarde tous les cas où on ne pourrais pas poser de block
-        if (x < 0 || y > nbMaxPieceY - 1 || x > nbMaxPieceX - 1 || y < 0 || (isThisPlayer ? (pieces && pieces[x] ? pieces[x][y] : null) : ((piecesAdverses && piecesAdverses[x] ? piecesAdverses[x][y] : null)))) {
+        if (x < 0 || y > nbMaxPieceY - 1 || x > nbMaxPieceX - 1 || y < 0 || (isThisPlayer ? (piecesPosees && piecesPosees[y] ? piecesPosees[y][x] : null) : ((piecesAdversesPosees && piecesAdversesPosees[y] ? piecesAdversesPosees[y][x] : null)))) {
             canDrawResult = false;
         }
     });
@@ -143,9 +157,11 @@ function keydown(e) {
             sendMessage(ACTIONS.MOVE, DIR.DOWN);
             break;
         case KEY.SPACE:
-            dropPiece(currentPiece, pieces, true);
+            var newpiece = dropPiece(currentPiece, piecesPosees, true);
             handled = true;
+            currentPiece = newpiece;
             sendMessage(ACTIONS.DROP);
+            sendMessage(ACTIONS.SELECTPIECE, newpiece);
             break;
         case KEY.UP:
             move(currentPiece, DIR.UP, true);
@@ -205,22 +221,26 @@ function clearCanvas(isThisPlayer) {
 
 // permet de lacher une pièce
 // retourne la nouvelle pièce
-function dropPiece(pieceToDrop, pieceList, isThisPlayer) {
+function dropPiece(pieceToDrop, piecePosesList, isThisPlayer) {
+    let pieceDropped = Duplicate(pieceToDrop);
+    // console.log("dropping ...");
+    // console.log(pieceDropped);
+    // console.log("isThisPlayer : ",isThisPlayer);
     // on regarde le y le plus bas possible pour poser la pièce
-    let lowestY = GetLowestYPossible(pieceToDrop.type, pieceToDrop.x, pieceToDrop.y, pieceToDrop.rotation, isThisPlayer);
+    let lowestY = GetLowestYPossible(pieceDropped.type, pieceDropped.x, pieceDropped.y, pieceDropped.rotation, isThisPlayer);
     // on vide le canvas
     clearCanvas(isThisPlayer);
 
     // on pose la pièce
-    chaqueMorceauPiece(pieceToDrop.type, pieceToDrop.x, lowestY, pieceToDrop.rotation, (x, y) => {
+    chaqueMorceauPiece(pieceDropped.type, pieceDropped.x, lowestY, pieceDropped.rotation, (x, y) => {
         // on verifie l'endoit où on souhaite poser la pièce et on met un tableau vide si c'est null
-        if (pieceList[x] == null) {
-            pieceList[x] = [];
+        if (piecePosesList[y] == null) {
+            piecePosesList[y] = [];
         }
-        if (pieceList[x][y] == null) {
-            pieceList[x][y] = [];
-        }
-        pieceList[x][y] = pieceToDrop;
+        // if (piecePosesList[x][y] == null) {
+        //     piecePosesList[x][y] = [];
+        // }
+        piecePosesList[y][x] = pieceDropped;
     });
 
     // on dessine les pièces déjà posées, dont celle que l'on viens de poser
@@ -228,11 +248,28 @@ function dropPiece(pieceToDrop, pieceList, isThisPlayer) {
 
     // on change l'objet par la nouvelle pièce
     pieceToDrop = {}
-    pieceToDrop.type = listePieces.shift(); // TODO à changer ?
     pieceToDrop.rotation = 0;
     pieceToDrop.x = 0;
     pieceToDrop.y = 0;
-    
+    if (isThisPlayer) {
+        pieceToDrop.type = listePieces.shift();
+
+    } else {
+        pieceToDrop.type = listePiecesAdverses.shift();
+    }
+    checkListAfterDrop(isThisPlayer);
+    checkLineAfterDrop(isThisPlayer);
+
+    if (!canDraw(pieceToDrop.type, pieceToDrop.x, pieceToDrop.y, pieceToDrop.rotation, isThisPlayer)) {
+        if (isThisPlayer) {
+            gameFinished = true;
+            alert("Vous ne pouvez plus poser de pièces ! \nVotre score final : " + score);
+            sendMessage(ACTIONS.FINALSCORE, score);
+            declareWinner();
+        }
+        return;
+    }
+
     // on dessine la nouvelle pièce
     draw(pieceToDrop, isThisPlayer);
 
@@ -254,29 +291,20 @@ function GetLowestYPossible(typePiece, x, y, rotation, isThisPlayer) {
 
 // permet de dessiner toutes les pièces déjà posées
 function drawPieces(isThisPlayer) {
+    let list = null;
     if (isThisPlayer) {
-        for (let cpt1 = 0; cpt1 < numMaxX; cpt1++) {
-            if (pieces[cpt1] != null) {
-
-                for (let cpt2 = 0; cpt2 < numMaxY; cpt2++) {
-                    if (pieces[cpt1][cpt2] != null) {
-                        let piece = pieces[cpt1][cpt2];
-
-                        drawMorceauPiece(cpt1, cpt2, piece.type.color, isThisPlayer);
-                    }
-                }
-            }
-        }
+        list = piecesPosees;
     } else {
-        for (let cpt1 = 0; cpt1 < numMaxX; cpt1++) {
-            if (piecesAdverses[cpt1] != null) {
+        list = piecesAdversesPosees;
+    }
 
-                for (let cpt2 = 0; cpt2 < numMaxY; cpt2++) {
-                    if (piecesAdverses[cpt1][cpt2] != null) {
-                        let piece = piecesAdverses[cpt1][cpt2];
+    for (let y = 0; y < numMaxY; y++) {
+        if (list[y] != null) {
+            for (let x = 0; x < numMaxX; x++) {
+                if (list[y][x] != null) {
+                    let piece = list[y][x];
 
-                        drawMorceauPiece(cpt1, cpt2, piece.type.color, isThisPlayer);
-                    }
+                    drawMorceauPiece(x, y, piece.type.color, isThisPlayer);
                 }
             }
         }
@@ -288,8 +316,8 @@ function random(min, max) {
     return (min + (Math.random() * (max - min)));
 }
 
-function randomChoice(choix) {
-    return choix[Math.round(random(0, choix.length - 1))];
+function randomChoice(lstChoix) {
+    return lstChoix[Math.round(random(0, lstChoix.length - 1))];
 }
 
 function run() {
@@ -306,6 +334,70 @@ function startGame() {
     draw(adversairePiece, false)
 }
 
+function checkListAfterDrop(isThisPlayer) {
+    if (isThisPlayer && listePieces.length == 5) {
+        let newList = getRandomPieceList(20);
+        listePieces = listePieces.concat(newList);
+        sendMessage(ACTIONS.ADDNEWPIECES, newList);
+    }
+}
+
+function checkLineAfterDrop(isThisPlayer) {
+    let list = null;
+    if (isThisPlayer) {
+        list = piecesPosees;
+    } else {
+        list = piecesAdversesPosees;
+    }
+
+    for (let y = 0; y < numMaxY; y++) {
+        if (list[y] != null) {
+            let lineIsFull = true;
+            for (let x = 0; x < numMaxX; x++) {
+                if (list[y][x] == null) {
+                    lineIsFull = false;
+                    break;
+                }
+            }
+            // dans le cas ou on a une ligne pleine on gagne 10 pts
+            if (lineIsFull) {
+                // on supprime la dernière ligne
+                for (let x = 0; x < numMaxX; x++) {
+                    list[y][x] = null;
+                }
+
+                // on décale chaque ligne de un vers le bas
+                for (let tempY = y; tempY >= 0; tempY--) {
+
+                    if (list[tempY] == null) {
+                        list[tempY] = [];
+                    }
+                    if (tempY !== 0) {
+                        if (list[tempY - 1] != null) {
+                            list[tempY] = Duplicate(list[tempY - 1]);
+                        } else {
+                            list[tempY] = null;
+                        }
+                    }
+                }
+                score += 10;
+                $("#currentScore").text(score);
+
+                clearCanvas(isThisPlayer);
+                // on dessine les pièces déplacées
+                drawPieces(isThisPlayer);
+                // dans le cas ou on rempli une autre ligne en même temps
+                checkLineAfterDrop(isThisPlayer);
+                break;
+            }
+        }
+    }
+}
+
+function Duplicate(obj) {
+    return JSON.parse(JSON.stringify(obj));
+}
+
 ///-------------------------------
 ///
 ///     PARTIE PEER TO PEER
@@ -315,7 +407,12 @@ function startGame() {
 
 function peerInitialize() {
 
-    currentPeer = new Peer();
+    // const peerServer = PeerServer({ port: 9000, path: '/myapp' });
+    currentPeer = new Peer({
+        secure: true,
+        host: 'serveur-peerjs-palazon.herokuapp.com',
+        port: 443,
+    });
     connexion = null;
 
     // on attends que la connexion s'ouvre entre les deux joueurs
@@ -354,13 +451,13 @@ function peerInitialize() {
     currentPeer.on('error', function (err) {
         console.log("une erreur est survenue : " + err.type);
         console.log(err);
-        
-        if(DEBUG){
+
+        if (DEBUG) {
             // si les serveurs public sont plein on reviens sur l'ecran d'accueil
-            if(err.message === "Server has reached its concurrent user limit"){
-                setTimeout(()=>{
+            if (err.message === "Server has reached its concurrent user limit") {
+                setTimeout(() => {
                     window.location.href = "Home.html";
-                },1000);
+                }, 1000);
             }
         }
     });
@@ -377,7 +474,6 @@ function readDataFromConn(connect) {
             console.log("Data recieved");
             console.log(data);
         }
-
         try {
             var obj = JSON.parse(data)
         } catch {
@@ -387,6 +483,7 @@ function readDataFromConn(connect) {
         switch (obj.action) {
             case ACTIONS.INIT:
                 listePieces = obj.value;
+                listePiecesAdverses = obj.value;
                 break;
             case ACTIONS.INITPSEUDO:
                 $("#nameRemotePlayer").text(`Joueur 2 : ` + obj.value);
@@ -395,8 +492,8 @@ function readDataFromConn(connect) {
                 move(adversairePiece, obj.value, false);
                 break;
             case ACTIONS.DROP:
-                let newPiece = dropPiece(adversairePiece, piecesAdverses, false);
-                sendMessage(ACTIONS.SELECTPIECE,newPiece);
+                let newPiece = dropPiece(adversairePiece, piecesAdversesPosees, false);
+                //sendMessage(ACTIONS.SELECTPIECE, newPiece);
                 break;
             case ACTIONS.ROTATE:
                 move(adversairePiece, DIR.UP, false);
@@ -412,6 +509,14 @@ function readDataFromConn(connect) {
                 adversairePiece.type = p.type;
                 clearCanvas(false);
                 draw(adversairePiece, false);
+                drawPieces(false);
+                break;
+            case ACTIONS.ADDNEWPIECES:
+                listePiecesAdverses = listePiecesAdverses.concat(obj.value);
+                break;
+            case ACTIONS.FINALSCORE:
+                scoreFinalAdverse = obj.value;
+                declareWinner();
                 break;
             default:
                 console.log(data);
@@ -420,9 +525,23 @@ function readDataFromConn(connect) {
     });
 }
 
+function declareWinner() {
+    if (gameFinished && scoreFinalAdverse != null) {
+        if (score == scoreFinalAdverse) {
+            alert("Bien joué ! Ce duel contre " + connexion.metadata.name + " se conclut par une égalité\nVos points : " + score + "\nSes points : " + scoreFinalAdverse);
+        } else if (score > scoreFinalAdverse) {
+            alert("Bravo ! Vous avez gagné ce duel contre " + connexion.metadata.name + "\nVos points : " + score + "\nSes points : " + scoreFinalAdverse);
+        } else {
+            alert("Oh non ! Vous avez perdu ce duel contre " + connexion.metadata.name + "\nVos points : " + score + "\nSes points : " + scoreFinalAdverse);
+        }
+    }
+
+}
+
 const generateGameStartInfos = () => {
     const playerName = sessionStorage.getItem("playerName");
     $("#nameHomePlayer").text(`Joueur 1 : ${playerName}`);
+    $("#currentScore").text(score);
 }
 
 function verifyIsTryingToConnect() {
@@ -462,5 +581,4 @@ function sendMessage(actionToSend, valueToSend = null) {
 peerInitialize();
 generateGameStartInfos();
 $('.modal').modal('show');
-$("#currentScore").text(`points`);
-$("#currentLineScore").text(`Lignes`);
+$("#currentLineScore").text(`points`);
