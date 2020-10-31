@@ -1,6 +1,5 @@
 // https://github.com/jmcker/Peer-to-Peer-Cue-System
 // TODO : afficher pièce suivante
-// TODO : Perdre
 
 var DEBUG = true;
 
@@ -49,7 +48,6 @@ var listePiecesAdverses = Duplicate(listePieces);
 
 var currentPiece = { y: 0, x: 0, rotation: 0, type: null };
 currentPiece.type = listePieces.shift();
-// on utilise le JSON pour ne pas avoir de référence à la valeur 
 var adversairePiece = { y: 0, x: 0, rotation: 0, type: listePiecesAdverses.shift() };
 
 var tailleX, // taille du block sur l'axe X
@@ -223,9 +221,6 @@ function clearCanvas(isThisPlayer) {
 // retourne la nouvelle pièce
 function dropPiece(pieceToDrop, piecePosesList, isThisPlayer) {
     let pieceDropped = Duplicate(pieceToDrop);
-    // console.log("dropping ...");
-    // console.log(pieceDropped);
-    // console.log("isThisPlayer : ",isThisPlayer);
     // on regarde le y le plus bas possible pour poser la pièce
     let lowestY = GetLowestYPossible(pieceDropped.type, pieceDropped.x, pieceDropped.y, pieceDropped.rotation, isThisPlayer);
     // on vide le canvas
@@ -237,9 +232,6 @@ function dropPiece(pieceToDrop, piecePosesList, isThisPlayer) {
         if (piecePosesList[y] == null) {
             piecePosesList[y] = [];
         }
-        // if (piecePosesList[x][y] == null) {
-        //     piecePosesList[x][y] = [];
-        // }
         piecePosesList[y][x] = pieceDropped;
     });
 
@@ -257,7 +249,9 @@ function dropPiece(pieceToDrop, piecePosesList, isThisPlayer) {
     } else {
         pieceToDrop.type = listePiecesAdverses.shift();
     }
+    // on vérifie que la liste de pièces disponible n'est pas vide
     checkListAfterDrop(isThisPlayer);
+    // on verifie si une fois la pièce posée elle complète une ligne
     checkLineAfterDrop(isThisPlayer);
 
     if (!canDraw(pieceToDrop.type, pieceToDrop.x, pieceToDrop.y, pieceToDrop.rotation, isThisPlayer)) {
@@ -353,6 +347,7 @@ function checkLineAfterDrop(isThisPlayer) {
     for (let y = 0; y < numMaxY; y++) {
         if (list[y] != null) {
             let lineIsFull = true;
+            //on cherche si il y a une ligne pleine
             for (let x = 0; x < numMaxX; x++) {
                 if (list[y][x] == null) {
                     lineIsFull = false;
@@ -394,6 +389,7 @@ function checkLineAfterDrop(isThisPlayer) {
     }
 }
 
+//permet de dupliquer un objet sans garder la référence
 function Duplicate(obj) {
     return JSON.parse(JSON.stringify(obj));
 }
@@ -407,7 +403,6 @@ function Duplicate(obj) {
 
 function peerInitialize() {
 
-    // const peerServer = PeerServer({ port: 9000, path: '/myapp' });
     currentPeer = new Peer({
         secure: true,
         host: 'serveur-peerjs-palazon.herokuapp.com',
@@ -443,23 +438,13 @@ function peerInitialize() {
             startGame();
         });
 
+        // on ecoute les messages que peut nous envoyer l'autre joueur via la connexion
         readDataFromConn(connexion);
-
-        //$("#idRemotePlayer").text(`ID Partie :` + connexion.peer);
     });
 
     currentPeer.on('error', function (err) {
         console.log("une erreur est survenue : " + err.type);
         console.log(err);
-
-        if (DEBUG) {
-            // si les serveurs public sont plein on reviens sur l'ecran d'accueil
-            if (err.message === "Server has reached its concurrent user limit") {
-                setTimeout(() => {
-                    window.location.href = "Home.html";
-                }, 1000);
-            }
-        }
     });
 
     currentPeer.on('disconnected', function () {
@@ -492,8 +477,7 @@ function readDataFromConn(connect) {
                 move(adversairePiece, obj.value, false);
                 break;
             case ACTIONS.DROP:
-                let newPiece = dropPiece(adversairePiece, piecesAdversesPosees, false);
-                //sendMessage(ACTIONS.SELECTPIECE, newPiece);
+                dropPiece(adversairePiece, piecesAdversesPosees, false);
                 break;
             case ACTIONS.ROTATE:
                 move(adversairePiece, DIR.UP, false);
@@ -544,6 +528,7 @@ const generateGameStartInfos = () => {
     $("#currentScore").text(score);
 }
 
+//on verifie si on essaye de se conencter à une partie ou si on est host
 function verifyIsTryingToConnect() {
     let idToJoin = sessionStorage.getItem("gameIdToJoin");
     sessionStorage.setItem("gameIdToJoin", null);
@@ -568,6 +553,7 @@ function verifyIsTryingToConnect() {
     }
 }
 
+// permet d'envoyer une action à l'autre joueur
 function sendMessage(actionToSend, valueToSend = null) {
     let objToSend = { action: actionToSend, value: valueToSend };
     if (connexion && connexion.open) {
