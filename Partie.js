@@ -61,6 +61,8 @@ var piecesPosees = [], // tableau à deux dimensions [y,x] pour la position de t
     ctx = canvas.getContext('2d'),
     canvasAdversaire = document.getElementById('canvasRemote'),
     ctxAdversaire = canvasAdversaire.getContext("2d"),
+    canvasPieceSuivante = document.getElementById('nextPieceCanvas'),
+    ctxPieceSuivante = canvasPieceSuivante.getContext("2d"),
     currentPeer = null,
     connexion = null;
 
@@ -111,19 +113,22 @@ function canDraw(typePiece, x, y, rotation, isThisPlayer) {
 }
 
 // permet de dessiner une pièce
-function draw(piece, isThisPlayer) {
+function draw(piece, isThisPlayer,isForNextPiece = false ) {
     chaqueMorceauPiece(piece.type, piece.x, piece.y, piece.rotation, (x, y, color) => {
-        drawMorceauPiece(x, y, color, isThisPlayer);
+        drawMorceauPiece(x, y, color, isThisPlayer,isForNextPiece);
     })
 }
 
 // dessine sur le canvas le morceau d'une pièce
-function drawMorceauPiece(x, y, color, isThisPlayer) {
+function drawMorceauPiece(x, y, color, isThisPlayer,isForNextPiece = false) {
     let context = null
     if (isThisPlayer) {
         context = ctx;
     } else {
         context = ctxAdversaire;
+    }
+    if(!isThisPlayer && isForNextPiece){
+        context = ctxPieceSuivante
     }
 
     context.fillStyle = color;
@@ -253,7 +258,8 @@ function dropPiece(pieceToDrop, piecePosesList, isThisPlayer) {
     pieceToDrop.y = 0;
     if (isThisPlayer) {
         pieceToDrop.type = listePieces.shift();
-
+        ctxPieceSuivante.clearRect(0, 0, canvasPieceSuivante.clientWidth, canvasPieceSuivante.clientHeight);
+        draw({ y: 0, x: 0, rotation: 0, type: listePieces[0]},false,true);
     } else {
         pieceToDrop.type = listePiecesAdverses.shift();
     }
@@ -324,6 +330,8 @@ function run() {
     addEvents();
     // on dessine la première pièce
     draw(currentPiece, true)
+    // on dessine la pièce suivante
+    draw({ y: 0, x: 0, rotation: 0, type: listePieces[0]},false,true);
 }
 
 function startGame() {
