@@ -1,3 +1,5 @@
+// vérification des champs du formulaire + stockage des valeurs dans le session storage 
+// et redirection vers la page Partie.html
 $("#buttonCreateGame").click( () => 
     { 
         const name = $("#namePlayer").val();
@@ -10,6 +12,8 @@ $("#buttonCreateGame").click( () =>
     }
 );
 
+// vérification des champs du formulaire + stockage des valeurs dans le session storage 
+// et redirection vers la page Partie.html
 $("#buttonFormJoinGame").click( () => 
     { 
         const name = $("#namePlayer").val();
